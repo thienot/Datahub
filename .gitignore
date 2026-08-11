@@ -1,0 +1,4 @@
+/airflow-local/logs
+/airflow-local/dags/__pycache__
+output/raw_qttg_1m/*.csv
+output/spark_lake/

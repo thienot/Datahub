@@ -1,0 +1,118 @@
+x-airflow-common: &airflow-common
+  build:
+    context: ./airflow-local
+  image: qttg-airflow:2.8.1
+  user: "${AIRFLOW_UID:-50000}:0"
+  environment:
+    AIRFLOW__CORE__EXECUTOR: LocalExecutor
+    AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@postgres/airflow
+    AIRFLOW__CORE__LOAD_EXAMPLES: "false"
+    AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION: "true"
+    AIRFLOW__WEBSERVER__SECRET_KEY: local-qTTg-demo-only
+  volumes:
+    - ./airflow-local/dags:/opt/airflow/dags
+    - ./airflow-local/logs:/opt/airflow/logs
+    - /var/run/docker.sock:/var/run/docker.sock
+  networks:
+    - spark-net
+  depends_on:
+    postgres:
+      condition: service_healthy
+
+services:
+  #Tìm hiểu và cấu hình spark-master
+  spark-master:
+    image: apache/spark:3.5.1-python3
+    user: root
+    privileged: true
+    container_name: spark-master
+    environment:
+      - SPARK_NO_DAEMONIZE=true
+    ports:
+      - "8080:8080" #port mở giao diện
+      - "7077:7077" #port để spark-worker và spark-submit kết nối vào
+    volumes:
+      - ./spark/apps/qttg:/opt/spark/apps/qttg:ro             #đường dẫn chứa code PySpark các file py
+      - ./output/raw_qttg_1m:/opt/spark/data/raw_qttg_1m:ro   #chứa file input đầu vào như csv 
+      - ./output/spark_lake:/opt/spark/data/lake              #chứa output kết quả
+    networks:
+      - spark-net
+    command: /opt/spark/bin/spark-class org.apache.spark.deploy.master.Master
+
+  spark-worker:
+    image: apache/spark:3.5.1-python3
+    container_name: spark-worker
+    user: root
+    privileged: true
+    #Cấu hình spark-worker
+    environment:
+      - SPARK_NO_DAEMONIZE=true
+    ports:
+      - "8081:8081" #port mở giao diện spark-worker
+    volumes:
+      - ./spark/apps/qttg:/opt/spark/apps/qttg:ro             #chứa các file code PySpark 
+      - ./output/raw_qttg_1m:/opt/spark/data/raw_qttg_1m:ro   #chứa file data raw/ input đầu vào
+      - ./output/spark_lake:/opt/spark/data/lake              #chứa file output
+    depends_on:
+      - spark-master
+    networks:
+      - spark-net
+    command: >
+      /opt/spark/bin/spark-class
+      org.apache.spark.deploy.worker.Worker
+      spark://spark-master:7077
+      --cores 2
+      --memory 2G
+
+  postgres:
+    image: postgres:15
+    environment:
+      POSTGRES_USER: airflow
+      POSTGRES_PASSWORD: airflow
+      POSTGRES_DB: airflow
+    volumes:
+      - airflow-postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U airflow"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks:
+      - spark-net
+
+  airflow-init:
+    <<: *airflow-common
+    command:
+      - bash
+      - -c
+      - |
+        airflow db migrate &&
+        (airflow users create \
+          --username admin \
+          --password admin \
+          --firstname Local \
+          --lastname Admin \
+          --role Admin \
+          --email admin@example.local || echo "User admin da ton tai")
+
+  airflow-webserver:
+    <<: *airflow-common
+    command: webserver
+    ports:
+      - "8082:8080"
+    healthcheck:
+      test: ["CMD-SHELL", "curl --fail http://localhost:8080/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  airflow-scheduler:
+    <<: *airflow-common
+    command: scheduler
+
+volumes:
+    airflow-postgres:
+
+networks:
+  spark-net:
+    driver: bridge
