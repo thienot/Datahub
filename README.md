@@ -85,7 +85,6 @@ Kết quả khớp đúng số dòng kỳ vọng của 2 file CSV nguồn.
 ![Log Silver](images/09_log_silver.png)
 
 ```
-LAYER=SILVER STATUS=SUCCESS PERSON_ROWS=<điền số thực tế> DETAIL_ROWS=<điền số thực tế>
 ```
 
 `PERSON_ROWS` nhỏ hơn hoặc bằng 142.857 — xác nhận đã lọc đúng, mỗi người chỉ còn 1 bản ghi mới nhất theo `SO_SO_BHXH`.
@@ -95,7 +94,6 @@ LAYER=SILVER STATUS=SUCCESS PERSON_ROWS=<điền số thực tế> DETAIL_ROWS=<
 ![Log Gold](images/10_log_gold.png)
 
 ```
-LAYER=GOLD STATUS=SUCCESS REPORT_ROWS=<điền số thực tế>
 ```
 
 [Log Gold](images/11_log_gold.png)
