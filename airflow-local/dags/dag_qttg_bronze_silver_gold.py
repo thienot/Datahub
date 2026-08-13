@@ -12,16 +12,16 @@ APP_DIR = "/opt/spark/apps/qttg"
 
 def spark_submit(app_name: str, app_args: str = "") -> str:
     return f"""
-set -e
-docker exec {SPARK_CONTAINER} \
-  /opt/spark/bin/spark-submit \
-  --master {SPARK_MASTER} \
-  --deploy-mode client \
-  --driver-memory 1g \
-  --executor-memory 2g \
-  --executor-cores 2 \
-  {APP_DIR}/{app_name} {app_args}
-""".strip()
+        set -e
+        docker exec {SPARK_CONTAINER} \
+        /opt/spark/bin/spark-submit \
+        --master {SPARK_MASTER} \
+        --deploy-mode client \
+        --driver-memory 1g \
+        --executor-memory 2g \
+        --executor-cores 2 \
+        {APP_DIR}/{app_name} {app_args}
+        """.strip()
 
 
 default_args = {
@@ -79,3 +79,4 @@ with DAG(
         ),
         execution_timeout=timedelta(minutes=30),
     )
+    bronze >> silver >> gold >> validate
