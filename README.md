@@ -97,7 +97,7 @@ Kết quả khớp đúng số dòng kỳ vọng của 2 file CSV nguồn.
 SHOW 20 dòng kết quả
 ```
 
-[Log Gold 2](images/11_log_gold.png)
+![Log Gold 2](images/11_log_gold.png)
 
 
 ### 4.11. Log Validate
