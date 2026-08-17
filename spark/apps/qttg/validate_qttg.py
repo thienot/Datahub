@@ -4,6 +4,40 @@ import sys
 from pyspark.sql import SparkSession
 from pyspark.sql.functions import *
 
+def validate_month_range(df, layer_name):
+    """
+    Validate TU_THANG và DEN_THANG:
+    1. Không được NULL / empty.
+    2. Đúng định dạng YYYYMM.
+    3. Tháng nằm trong khoảng 01-12.
+    4. TU_THANG <= DEN_THANG.
+    """
+
+    invalid_count = df.filter(
+        # 1.null/empty
+        col("TU_THANG").isNull()
+        | (trim(col("TU_THANG")) == "")
+        | col("DEN_THANG").isNull()
+        | (trim(col("DEN_THANG")) == "")
+        # 2.format YYYYMM
+        | (~trim(col("TU_THANG")).rlike(r"^[0-9]{6}$"))
+        | (~trim(col("DEN_THANG")).rlike(r"^[0-9]{6}$"))
+        # 3.month 01-12
+        | (~substring(trim(col("TU_THANG")), 5, 2).between("01", "12"))
+        | (~substring(trim(col("DEN_THANG")), 5, 2).between("01", "12"))
+        # 4.TU_THANG <= DEN_THANG
+        | (trim(col("TU_THANG"))> trim(col("DEN_THANG"))
+        )
+    ).count()
+
+    print(
+        f"{layer_name.upper()}_INVALID_MONTH_RANGE_ROWS="
+        f"{invalid_count}"
+    )
+
+    return invalid_count
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--lake-dir", required=True)
@@ -31,15 +65,13 @@ def main():
         errors.append(f"duplicate_person_rows={dup_person_count}")
 
     # 3) Kiểm tra bản ghi có thông tin tháng không hợp lệ
-    invalid_range_count = silver_detail.filter(
-        (~col("TU_THANG").rlike(r"^[0-9]{6}$")) |
-        ( ~col("DEN_THANG").rlike(r"^[0-9]{6}$")) |
-        (~substring(col("TU_THANG"), 5, 2).between("01", "12")) |
-        (~substring(col("DEN_THANG"), 5, 2).between("01", "12")) |
-        (col("TU_THANG") > col("DEN_THANG"))
-    ).count()
-    if invalid_range_count > 0:
-        errors.append(f"invalid_month_range_rows={invalid_range_count}")
+    master_invalid_month_count = validate_month_range(silver_master,"master")
+    if master_invalid_month_count > 0:
+        errors.append(f"master_invalid_month_range_rows={master_invalid_month_count}")
+
+    detail_invalid_month_count = validate_month_range(silver_detail,"detail")
+    if detail_invalid_month_count > 0:
+        errors.append(f"detail_invalid_month_range_rows={detail_invalid_month_count}")
 
     # 4) Gold không trùng tháng
     dup_month_count = (
