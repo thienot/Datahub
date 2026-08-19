@@ -35,6 +35,8 @@ services:
       - ./spark/apps/qttg:/opt/spark/apps/qttg:ro             #đường dẫn chứa code PySpark các file py
       - ./output/raw_qttg_1m:/opt/spark/data/raw_qttg_1m:ro   #chứa file input đầu vào như csv 
       - ./output/spark_lake:/opt/spark/data/lake              #chứa output kết quả
+      # thêm mới driver JDBC để Spark ghi được vào Postgres (postgres-dwh)
+      - ./spark/jars/postgresql-42.7.3.jar:/opt/spark/jars/postgresql-42.7.3.jar  
     networks:
       - spark-net
     command: /opt/spark/bin/spark-class org.apache.spark.deploy.master.Master
@@ -53,6 +55,9 @@ services:
       - ./spark/apps/qttg:/opt/spark/apps/qttg:ro             #chứa các file code PySpark 
       - ./output/raw_qttg_1m:/opt/spark/data/raw_qttg_1m:ro   #chứa file data raw/ input đầu vào
       - ./output/spark_lake:/opt/spark/data/lake              #chứa file output
+      # thêm mới driver JDBC để Spark ghi được vào Postgres (postgres-dwh)
+      - ./spark/jars/postgresql-42.7.3.jar:/opt/spark/jars/postgresql-42.7.3.jar  
+
     depends_on:
       - spark-master
     networks:
@@ -63,6 +68,23 @@ services:
       spark://spark-master:7077
       --cores 2
       --memory 2G
+  #Thêm mới Postgres riêng cho dữ liệu nghiệp vụ (Header/Detail)
+  postgres-dwh:
+    image: postgres:15
+    container_name: postgres-dwh
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: qttg_dwh
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks:    
+      - spark-net
 
   postgres:
     image: postgres:15
