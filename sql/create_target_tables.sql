@@ -1,6 +1,7 @@
 CREATE TABLE IF NOT EXISTS qttg_header (
     id                  BIGSERIAL PRIMARY KEY,
-    nld_id              BIGINT NOT NULL,
+    full_name           VARCHAR(50),
+    nld_id              BIGINT NOT NULL UNIQUE,
     so_so_bhxh          VARCHAR(50) NOT NULL UNIQUE,
     thang_bd            VARCHAR(10),
     thang_kt            VARCHAR(10),
@@ -24,6 +25,9 @@ CREATE TABLE IF NOT EXISTS qttg_detail (
 -- Đánh index cho cả 2 điều kiện search: theo mã BHXH và theo mã người lao động
 CREATE INDEX IF NOT EXISTS idx_qttg_header_so_bhxh ON qttg_header (so_so_bhxh);
 CREATE INDEX IF NOT EXISTS idx_qttg_header_nld_id ON qttg_header (nld_id);
+
+CREATE EXTENSION IF NOT EXISTS pg_trgm;
+CREATE INDEX IF NOT EXISTS idx_qttg_header_full_name_trgm ON qttg_header USING gin (full_name gin_trgm_ops);
 
 CREATE INDEX IF NOT EXISTS idx_qttg_detail_header_id ON qttg_detail (header_id);
 

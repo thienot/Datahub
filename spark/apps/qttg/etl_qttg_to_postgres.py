@@ -9,7 +9,7 @@ docker exec spark-master /opt/spark/bin/spark-submit \
     /opt/spark/apps/qttg/etl_qttg_to_postgres.py
 """
 
-from pyspark.sql import SparkSession
+from pyspark.sql import SparkSession, DataFrame
 from pyspark.sql.functions import *
 
 # Config - đường dẫn Silver layer local
@@ -24,6 +24,54 @@ PG_PROPS = {
     "driver": "org.postgresql.Driver",
 }
 
+def add_random_full_name(df: DataFrame) -> DataFrame:
+    """
+    Thêm cột full_name random vào DataFrame
+    """
+    ho = array(
+        lit("Nguyễn"), lit("Trần"), lit("Lê"), lit("Phạm"),
+        lit("Hoàng"), lit("Huỳnh"), lit("Vũ"), lit("Võ")
+    )
+    ten_dem = array(
+        lit("Văn"), lit("Thị"), lit("Đức"), lit("Minh"),
+        lit("Thành"), lit("Hữu"), lit("Quốc")
+    )
+    ten = array(
+        lit("An"), lit("Bình"), lit("Cường"), lit("Dũng"),
+        lit("Hùng"), lit("Nam"), lit("Phong"), lit("Tuấn"),
+        lit("Hà"), lit("Lan"), lit("Thiện"), lit("Anh"), lit("Huy"),
+        lit("Minh"), lit("Thắng"), lit("Trung"), lit("Tài"), lit("Quang"),
+        lit("Trang"), lit("Đức"), lit("Mạnh"), lit("Thịnh"), lit("Thái"),
+        lit("Đạt"),lit("Bắc"),lit("Linh"),lit("Huệ"),lit("Hồng"),lit("Trà"),
+    )
+
+    #concat: nối thành 1 chuỗi hoàn chỉnh
+    #element_at: lấy vị trí chỉ số trong mảng (Spark lấy chỉ số từ số 1)
+    #floor: lấy phần nguyên bỏ phần thập phân
+    return df.withColumn(
+        "full_name",
+        concat(
+            element_at(ho, floor(rand() * 8 + 1).cast("int")),
+            lit(" "),
+            element_at(ten_dem, floor(rand() * 7 + 1).cast("int")),
+            lit(" "),
+            element_at(ten, floor(rand() * 29 + 1).cast("int"))
+        )
+    )
+
+#hàm format lại ngày từ dạng YYYYMM → MM/YYYY
+def format_yyyymm_to_mmyyyy(df: DataFrame, col_name: str) -> DataFrame:
+    """
+    Format cột từ dạng 199204 → 04/1992
+    """
+    return df.withColumn(
+        col_name,
+        concat(
+            substring(col(col_name).cast("string"), 5, 2),  # lấy MM
+            lit("/"),
+            substring(col(col_name).cast("string"), 1, 4)   # lấy YYYY
+        )
+    )
 
 def main():
     spark = SparkSession.builder.appName("etl_qttg_to_postgres").getOrCreate()
@@ -39,11 +87,9 @@ def main():
     total_detail_raw = df_detail_raw.count()
     print(f"--- Silver: master={total_master} dòng, detail={total_detail_raw} dòng ---")
 
-    # ============================================
     # Transform Header
-    # Dùng thẳng ID gốc từ file làm id trong bảng đích -> không cần
-    # đọc lại DB để lấy id mới sinh, vì MASTER_ID bên Detail sẽ luôn khớp thẳng với ID này.
-    # ============================================
+    # Dùng thẳng ID gốc từ file làm id trong bảng đích -> không cần đọc lại DB để lấy id mới sinh, 
+    # vì MASTER_ID bên Detail sẽ luôn khớp thẳng với ID này.
     df_header_clean = (
         df_master
         .select(
@@ -54,6 +100,12 @@ def main():
             col("THANG_KT").alias("thang_kt"),
         )
     )
+    #Thêm random cho trường full name để phục vụ cho bài tập search theo name
+    df_header_clean = add_random_full_name(df_header_clean)
+
+    #Sửa lại format theo đúng output yêu cầu là MM/yyyy
+    df_header_clean = format_yyyymm_to_mmyyyy(df_header_clean, "thang_bd")
+    df_header_clean = format_yyyymm_to_mmyyyy(df_header_clean, "thang_kt")
 
     header_clean_count = df_header_clean.count()
     print(f"--- Header sau transform: {header_clean_count} dòng ---")
@@ -79,12 +131,13 @@ def main():
         col("NOI_LAM_VIEC").alias("noi_lam_viec"),
         col("MUC_LUONG").alias("muc_luong"),
     )
+    df_detail_clean = format_yyyymm_to_mmyyyy(df_detail_clean, "tu_thang")
+    df_detail_clean = format_yyyymm_to_mmyyyy(df_detail_clean, "den_thang")
 
-    # ============================================
     # INNER JOIN với Header đã ghi (theo header_id = id) để đảm bảo
     # Detail nào không khớp Header hợp lệ sẽ tự động bị loại,
     # không bao giờ ghi ra FK sai/mồ côi.
-    # ============================================
+
     df_detail_final = df_detail_clean.join(
         df_header_clean.select(col("id").alias("header_id")),
         on="header_id", how="inner"
