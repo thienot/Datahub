@@ -6,7 +6,12 @@ CREATE TABLE IF NOT EXISTS qttg_header (
     thang_bd            VARCHAR(10),
     thang_kt            VARCHAR(10),
     created_at          TIMESTAMP NOT NULL DEFAULT now(),
-    updated_at          TIMESTAMP NOT NULL DEFAULT now()
+    updated_at          TIMESTAMP NOT NULL DEFAULT now(),
+
+    created_by          VARCHAR(100) NOT NULL DEFAULT 'spark-job',
+    updated_by          VARCHAR(100) NOT NULL DEFAULT 'spark-job',
+    batch_id            VARCHAR(50),                    -- mã lần chạy Spark job
+    is_deleted          BOOLEAN NOT NULL DEFAULT FALSE  -- soft delete
 );
 
 CREATE TABLE IF NOT EXISTS qttg_detail (
@@ -19,7 +24,12 @@ CREATE TABLE IF NOT EXISTS qttg_detail (
     chuc_danh       VARCHAR(200),
     noi_lam_viec    VARCHAR(50),
     muc_luong       NUMERIC(19,4),
-    created_at      TIMESTAMP NOT NULL DEFAULT now()
+    created_at      TIMESTAMP NOT NULL DEFAULT now(),
+    updated_at      TIMESTAMP NOT NULL DEFAULT now(),
+    created_by      VARCHAR(100) NOT NULL DEFAULT 'spark-job',
+    updated_by      VARCHAR(100) NOT NULL DEFAULT 'spark-job',
+    batch_id        VARCHAR(50),
+    is_deleted      BOOLEAN NOT NULL DEFAULT FALSE
 );
 
 -- Đánh index cho cả 2 điều kiện search: theo mã BHXH và theo mã người lao động
@@ -31,13 +41,3 @@ CREATE INDEX IF NOT EXISTS idx_qttg_header_full_name_trgm ON qttg_header USING g
 
 CREATE INDEX IF NOT EXISTS idx_qttg_detail_header_id ON qttg_detail (header_id);
 
-CREATE TABLE IF NOT EXISTS etl_run_log (
-    id              BIGSERIAL PRIMARY KEY,
-    job_name        VARCHAR(100),
-    start_time      TIMESTAMP,
-    end_time        TIMESTAMP,
-    status          VARCHAR(20),
-    rows_header     BIGINT,
-    rows_detail     BIGINT,
-    error_message   TEXT
-);

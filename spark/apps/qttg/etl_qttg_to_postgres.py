@@ -11,6 +11,8 @@ docker exec spark-master /opt/spark/bin/spark-submit \
 
 from pyspark.sql import SparkSession, DataFrame
 from pyspark.sql.functions import *
+from datetime import datetime, timedelta
+import uuid
 
 # Config - đường dẫn Silver layer local
 MASTER_PATH = "/opt/spark/data/lake/silver/master"
@@ -76,6 +78,11 @@ def format_yyyymm_to_mmyyyy(df: DataFrame, col_name: str) -> DataFrame:
 def main():
     spark = SparkSession.builder.appName("etl_qttg_to_postgres").getOrCreate()
 
+    #1. Tạo batch_id duy nhất cho lần chạy này
+    vn_time = datetime.utcnow() + timedelta(hours=7)
+    batch_id = vn_time.strftime("%Y%m%d_%H%M%S") + "_" + str(uuid.uuid4())[:8]    
+    print(f"--- Batch ID của lần chạy này: {batch_id} ---")
+
     # Đọc Silver layer
     print(f"--- Đọc Master từ {MASTER_PATH} ---")
     df_master = spark.read.parquet(MASTER_PATH)
@@ -107,6 +114,15 @@ def main():
     df_header_clean = format_yyyymm_to_mmyyyy(df_header_clean, "thang_bd")
     df_header_clean = format_yyyymm_to_mmyyyy(df_header_clean, "thang_kt")
 
+    #Thêm các cột Audit/Log cho master
+    df_header_clean = (
+        df_header_clean
+        .withColumn("created_by", lit("spark-job"))
+        .withColumn("updated_by", lit("spark-job"))
+        .withColumn("batch_id", lit(batch_id))
+        .withColumn("is_deleted", lit(False))
+    )
+
     header_clean_count = df_header_clean.count()
     print(f"--- Header sau transform: {header_clean_count} dòng ---")
 
@@ -133,24 +149,23 @@ def main():
     )
     df_detail_clean = format_yyyymm_to_mmyyyy(df_detail_clean, "tu_thang")
     df_detail_clean = format_yyyymm_to_mmyyyy(df_detail_clean, "den_thang")
+    #Thêm các cột Audit/Log cho master
+    df_detail_clean = (
+            df_detail_clean
+            .withColumn("created_by", lit("spark-job"))
+            .withColumn("updated_by", lit("spark-job"))
+            .withColumn("batch_id", lit(batch_id))
+            .withColumn("is_deleted", lit(False))
+        )
 
-    # INNER JOIN với Header đã ghi (theo header_id = id) để đảm bảo
-    # Detail nào không khớp Header hợp lệ sẽ tự động bị loại,
-    # không bao giờ ghi ra FK sai/mồ côi.
-
-    df_detail_final = df_detail_clean.join(
-        df_header_clean.select(col("id").alias("header_id")),
-        on="header_id", how="inner"
-    )
-
-    detail_final_count = df_detail_final.count()
+    detail_final_count = df_detail_clean.count()
     dropped = total_detail_raw - detail_final_count
     print(f"--- Detail sau join cuối cùng: {detail_final_count} dòng ---")
     if dropped > 0:
         print(f"--- CẢNH BÁO: {dropped} dòng Detail bị loại do không khớp được Header hợp lệ ---")
 
     # Ghi Detail vào postgres-dwh
-    df_detail_final.write.jdbc(
+    df_detail_clean.write.jdbc(
         url=PG_URL, table="qttg_detail", mode="append", properties=PG_PROPS
     )
     print("--- Đã ghi xong qttg_detail ---")

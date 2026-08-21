@@ -69,7 +69,7 @@ public class BhxhService {
         List<BhxhResponse> content = new ArrayList<>();
         for (Long id : ids) {
             BhxhHeader header = headerById.get(id);
-            if (header != null) { // phòng hờ ID không tìm thấy header tương ứng
+            if (header != null) { // phòng ID không tìm thấy header tương ứng
                 content.add(toDto(header));
             }
         }
