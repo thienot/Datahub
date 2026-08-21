@@ -27,8 +27,7 @@ Bảng Detail
 
 #### 1.3 Kiểm tra quan hệ giữa các bảng
 
-Thực hiện JOIN giữa các bảng để kiểm tra relationship:
-
+Quan hệ các bảng
 ![Database Relationship](images/03-database-relationship.png)
 
 ---
