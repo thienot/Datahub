@@ -1,3 +1,73 @@
+# XÂY DỰNG DATA PIPELINE & RESTFUL API TRA CỨU THÔNG TIN
+
+## Mục tiêu bài tập
+*   Hiểu và thực hành thiết kế Cơ sở dữ liệu quan hệ (Mô hình 1-N / Header - Detail).
+*   Làm quen với framework Java Spring Boot để phát triển RESTful API.
+*   Áp dụng các tiêu chuẩn thực tế khi làm API: Phân trang, Xử lý lỗi (Exception Handling), Viết tài liệu (Swagger), và Logging.
+
+## Luồng kiến trúc (Architecture Flow)
+`Dữ liệu (Silver Layer)  == (Spark Job) ==>  Relational DB (Postgres/Oracle)  ==> (Spring Boot) ==  Người dùng gọi API`
+### 1. Spark Job & Database
+
+#### 1.1 Spark Job chạy thành công
+
+Spark Job được thực thi thành công và không phát sinh lỗi.
+
+![Spark Job Success](images/01-spark-job-success.png)
+
+#### 1.2 Database có dữ liệu
+
+Kiểm tra dữ liệu sau khi Spark Job hoàn thành:
+
+Bảng Header
+![Database Data](images/02-database-data.png)
+
+Bảng Detail
+![Database Data](images/03-database-data.png)
+
+#### 1.3 Kiểm tra quan hệ giữa các bảng
+
+Thực hiện JOIN giữa các bảng để kiểm tra relationship:
+
+![Database Relationship](images/03-database-relationship.png)
+
+---
+
+### 2. API Search
+
+#### 2.1 Search theo Tên
+Api Search theo tên
+![Api Search Name](images/01-api-name.png)
+
+#### 2.1 Search theo Mã
+Api Search theo mã
+![Api Search Key](images/02-api-key.png)
+
+---
+
+### 3. Chỉnh size để dữ liệu cắt theo trang
+
+Cắt size = 2
+![ Size](images/01-size.png)
+
+### 4. Truyền sai tham số
+
+Truyền sai tham số page
+![ Page](images/error-page.png)
+
+Truyền sai tham số size
+![ Size](images/error-size.png)
+
+Truyền sai thiếu tham số keywowrd
+![ Key](images/error-key.png)
+
+### 5. Truy cập được Swagger UI và gọi thử
+
+Truy cập được Swagger UI và gọi thử
+![ Swagger](images/swagger.png)
+
+
+
 # Báo cáo: Airflow điều phối Spark — Bài tập QTTG BHXH (Local)
 
 ## 1. Mục tiêu
