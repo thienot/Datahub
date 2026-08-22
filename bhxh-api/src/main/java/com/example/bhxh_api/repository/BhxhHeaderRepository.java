@@ -25,8 +25,8 @@ public interface BhxhHeaderRepository extends JpaRepository<BhxhHeader, Long> {
     //Tìm theo name: fuzzy match, chỉ dùng khi input không phải số thuần. 
     // Dựa vào trgm index (idx_qttg_header_full_name_trgm).
     @Query(
-        value = "SELECT h.id FROM BhxhHeader h WHERE h.fullName LIKE CONCAT('%', :keyword, '%')",
-        countQuery = "SELECT COUNT(h.id) FROM BhxhHeader h WHERE LOWER(h.fullName) LIKE LOWER(CONCAT('%', :keyword, '%'))"
+        value = "SELECT h.id FROM BhxhHeader h WHERE h.fullName ILIKE CONCAT('%', :keyword, '%')",
+        countQuery = "SELECT COUNT(h.id) FROM BhxhHeader h WHERE h.fullName ILIKE CONCAT('%', :keyword, '%')"
     )
     Page<Long> findIdsByNameFuzzy(@Param("keyword") String keyword, Pageable pageable);
 
