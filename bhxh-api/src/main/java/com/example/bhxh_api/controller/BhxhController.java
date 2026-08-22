@@ -27,7 +27,7 @@ import org.springframework.web.bind.annotation.RestController;
 //Tất cả API trong class này đều bắt đầu bằng /api/v1/bhxh
 @RequestMapping("/api/v1/bhxh")
 @RequiredArgsConstructor
-@Validated                    // ← quan trọng
+// @Validated                    // ← quan trọng
 @Tag(name = "BHXH Search API", description = "Tra cứu quá trình tham gia BHXH")
 public class BhxhController {
 
@@ -43,15 +43,14 @@ public class BhxhController {
     public ApiResponse<PageResponse<BhxhResponse>> search(
 
             //Mô tả tham số
-            @Parameter(description = "Từ khóa - mã BHXH (so_so_bhxh) hoặc mã NLD (nld_id)", required = true)
-            @RequestParam(required = true) 
-            @NotBlank(message = "Keyword không được để trống") String keyword,
+            @Parameter(description = "Từ khóa - mã BHXH (so_so_bhxh) hoặc mã NLD (nld_id)", required = false)
+            @RequestParam(required = false) String keyword,
 
             @Parameter(description = "Số trang, bắt đầu từ 0")
-            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "0") Integer page,
 
             @Parameter(description = "Số bản ghi mỗi trang")
-            @RequestParam(defaultValue = "10") int size) {
+            @RequestParam(defaultValue = "100") Integer size) {
         
         //Ghi log để dễ theo dõi khi chạy thật.
         log.info("GET /api/v1/bhxh/search - keyword={}, page={}, size={}", keyword, page, size);

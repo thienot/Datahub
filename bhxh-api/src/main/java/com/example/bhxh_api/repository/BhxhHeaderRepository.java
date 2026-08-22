@@ -11,6 +11,9 @@ import java.util.List;
 
 public interface BhxhHeaderRepository extends JpaRepository<BhxhHeader, Long> {
 
+    @Query("SELECT h.id FROM BhxhHeader h")
+    Page<Long> findAllIds(Pageable pageable);
+
     //Tìm theo KEY (so_so_bhxh hoặc nld_id): so khớp CHÍNH XÁC
     // (dấu =, không phải LIKE), xử lý tra cứu theo mã/ID 
     // tận dụng B-tree index (idx_qttg_header_so_bhxh, idx_qttg_header_nld_id),

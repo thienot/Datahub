@@ -25,21 +25,23 @@ public class BhxhService {
     private final BhxhHeaderRepository repository;
 
     @Transactional(readOnly = true)
-    public PageResponse<BhxhResponse> search(String keyword, int page, int size) {
+    public PageResponse<BhxhResponse> search(String keyword, Integer page, Integer size) {
         Pageable pageable = PageRequest.of(page, size);
 
-        // Đoán ý định: keyword toàn số -> tìm theo Key/ID (chính xác, B-tree index).
-        // Có chữ -> tìm theo tên (fuzzy, trgm index).
-        boolean isNumericKey = keyword.matches("\\d+");
-
-        //lấy danh sách ID khớp điều kiện (đã phân trang ở tầng DB)
+ 
+        boolean hasKeyword = keyword != null && !keyword.isBlank();
+        boolean isNumericKey = hasKeyword && keyword.matches("\\d+");
+ 
         Page<Long> idPage;
-        if (isNumericKey) {
+        if (!hasKeyword) {
+            // Không truyền keyword -> lấy tất cả, không điều kiện lọc
+            idPage = repository.findAllIds(pageable);
+        } else if (isNumericKey) {
             Long nldId;
             try {
                 nldId = Long.parseLong(keyword);
             } catch (NumberFormatException e) {
-                nldId = -1L; // số quá lớn vượt Long -> chắc chắn không khớp, tránh crash
+                nldId = -1L;
             }
             idPage = repository.findIdsByExactKey(keyword, nldId, pageable);
         } else {
